@@ -3,8 +3,9 @@ import {
   useWorkspaceExecutionHost,
   workspaceRouteParams
 } from '../../../../src/navigation/workspace-execution-host'
-import { useCallback } from 'react'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useState } from 'react'
+import { View } from 'react-native'
+import { useIsFocused, useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import { firstParam } from '../../../../src/navigation/route-param-reader'
 import {
   shellScreenRoute,
@@ -12,6 +13,7 @@ import {
 } from '../../../../src/mobile-web-shell/shell-screen-route'
 import { MobileWebShellScreen } from '../../../../src/mobile-web-shell/MobileWebShellScreen'
 import { PageRouteUnavailableScreen } from '../../../../src/mobile-web-shell/PageRouteUnavailableScreen'
+import { OrcaNativeVoiceOverlay } from '../../../../src/session/OrcaNativeVoiceOverlay'
 
 /**
  * The session screen — terminal and chat — from the desktop's bundle.
@@ -40,6 +42,15 @@ export default withWorkspaceRoute(function MobileSessionScreen() {
   const hostId = firstParam(params.hostId)
   const worktreeId = firstParam(params.worktreeId)
   const executionHost = useWorkspaceExecutionHost()
+  const isFocused = useIsFocused()
+  const currentPathname = usePathname()
+  const [webPathname, setWebPathname] = useState('')
+  const [activeTabFrame, setActiveTabFrame] = useState<{
+    x: number
+    y: number
+    width: number
+    height: number
+  } | null>(null)
   const router = useRouter()
   const paneKey = firstParam(params.paneKey) ?? ''
   // The reader erasing its own request (ruling 34): the page applied a pane and names it back, and
@@ -90,11 +101,25 @@ export default withWorkspaceRoute(function MobileSessionScreen() {
   // change.
   const { paneKey: _paneKey, ...identity } = routeParams
   return (
-    <MobileWebShellScreen
-      key={shellScreenRouteKey({ pathname: route.pathname, params: identity })}
-      hostId={hostId}
-      route={route}
-      onRouteParamClear={erasePaneKey}
-    />
+    <View style={{ flex: 1 }}>
+      <MobileWebShellScreen
+        key={shellScreenRouteKey({ pathname: route.pathname, params: identity })}
+        hostId={hostId}
+        route={route}
+        onRouteParamClear={erasePaneKey}
+        onPagePathname={(pathname) => {
+          setWebPathname(pathname)
+          setActiveTabFrame(null)
+        }}
+        onActiveTabFrame={webPathname === currentPathname ? setActiveTabFrame : undefined}
+      />
+      {isFocused && webPathname === currentPathname ? (
+        <OrcaNativeVoiceOverlay
+          hostId={hostId}
+          worktreeId={worktreeId}
+          activeTabFrame={activeTabFrame}
+        />
+      ) : null}
+    </View>
   )
 })

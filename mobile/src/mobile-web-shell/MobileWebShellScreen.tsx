@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   OrcaMobileWebShellView,
-  parseMobileWebShellLoadState
+  parseMobileWebShellLoadState,
+  type OrcaMobileWebShellViewHandle
 } from '../../modules/orca-mobile-web-shell/src'
 import { HostRouteNoticeBanner } from '../components/HostRouteNoticeBanner'
 import { ProtocolBlockScreen } from '../components/ProtocolBlockScreen'
@@ -143,6 +144,8 @@ export type MobileWebShellScreenProps = {
    * that caller's: it holds the param, and a tap that moved on since leaves a newer value there.
    */
   onRouteParamClear?: (param: BridgeClearableRouteParam, value: string) => void
+  onPagePathname?: (pathname: string) => void
+  onActiveTabFrame?: (frame: { x: number; y: number; width: number; height: number } | null) => void
   runtime?: MobileWebShellRuntime
 }
 
@@ -158,14 +161,40 @@ export function MobileWebShellScreen({
   route,
   appNamesRoute,
   onRouteParamClear,
+  onPagePathname,
+  onActiveTabFrame,
   runtime
 }: MobileWebShellScreenProps) {
   const insets = useSafeAreaInsets()
+  const activeTabViewRef = useRef<OrcaMobileWebShellViewHandle | null>(null)
   const router = useRouter()
   const navigation = useNavigation()
   const popShellStack = useShellStackPop()
   const { isWideLayout } = useResponsiveLayout()
   const { droppedBinaryFrames, reportDroppedBinaryFrames } = useMobileWebShellDroppedFrames()
+  useEffect(() => {
+    if (!onActiveTabFrame || Platform.OS !== 'ios') return
+    let cancelled = false
+    let busy = false
+    const refresh = async () => {
+      if (busy || !activeTabViewRef.current) return
+      busy = true
+      try {
+        const frame = await activeTabViewRef.current.measureActiveTab()
+        if (!cancelled) onActiveTabFrame(frame)
+      } catch {
+        if (!cancelled) onActiveTabFrame(null)
+      } finally {
+        busy = false
+      }
+    }
+    void refresh()
+    const timer = setInterval(() => void refresh(), 500)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [onActiveTabFrame])
   const {
     state,
     pageRoutes,
@@ -399,12 +428,16 @@ export function MobileWebShellScreen({
       )}
       <OrcaMobileWebShellView
         key={state.sessionId}
-        ref={bridge.viewRef}
+        ref={(handle) => {
+          bridge.viewRef(handle)
+          activeTabViewRef.current = handle
+        }}
         style={styles.shellView}
         generationDirectory={state.generationDirectory}
         sessionId={state.sessionId}
         bridgeEnabled={bridge.bridgeEnabled}
         onBridgeMessage={bridge.onBridgeMessage}
+        onPagePathname={(event) => onPagePathname?.(event.nativeEvent.pathname)}
         onExternalNavigation={(event) => {
           const target = cancelledShellNavigationTarget(event.nativeEvent.url)
           if (target === null) {

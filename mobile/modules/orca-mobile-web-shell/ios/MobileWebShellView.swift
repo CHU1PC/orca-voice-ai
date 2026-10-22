@@ -175,6 +175,7 @@ internal final class MobileWebShellBridgeMessageTooLargeException: GenericExcept
 final class OrcaMobileWebShellView: ExpoView, WKNavigationDelegate, WKUIDelegate {
   let onLoadState = EventDispatcher()
   let onBridgeMessage = EventDispatcher()
+  let onPagePathname = EventDispatcher()
   let onExternalNavigation = EventDispatcher()
 
   private let schemeHandler = MobileWebShellSchemeHandler()
@@ -184,6 +185,7 @@ final class OrcaMobileWebShellView: ExpoView, WKNavigationDelegate, WKUIDelegate
   private var bridgeInstalled = false
   private var bridgeTarget = MobileWebShellBridgeTarget<WKFrameInfo>()
   private var webView: WKWebView!
+  private var urlObservation: NSKeyValueObservation?
   private var generationDirectory = ""
   private var sessionId = ""
   private var applied: MobileWebShellAppliedProps?
@@ -209,6 +211,9 @@ final class OrcaMobileWebShellView: ExpoView, WKNavigationDelegate, WKUIDelegate
     configuration.userContentController.addUserScript(Self.makeBlockerScript())
     bridgeReceiver.view = self
     webView = WKWebView(frame: bounds, configuration: configuration)
+    urlObservation = webView.observe(\.url, options: [.new]) { [weak self] webView, _ in
+      self?.onPagePathname(["pathname": webView.url?.path ?? ""])
+    }
     webView.navigationDelegate = self
     webView.uiDelegate = self
     webView.allowsBackForwardNavigationGestures = false
@@ -393,6 +398,22 @@ final class OrcaMobileWebShellView: ExpoView, WKNavigationDelegate, WKUIDelegate
       case .failure(let error):
         promise.reject(MobileWebShellBridgeDeliveryFailedException(error.localizedDescription))
       }
+    }
+  }
+
+  func measureActiveTab(_ promise: Promise) {
+    let script = """
+      (() => {
+        const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+        const tab = tabs.find((item) => getComputedStyle(item).backgroundColor === 'rgb(36, 36, 36)')
+          ?? (tabs.length === 1 ? tabs[0] : null);
+        if (!tab) return null;
+        const rect = tab.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      })()
+      """
+    webView.evaluateJavaScript(script) { result, _ in
+      promise.resolve(result ?? NSNull())
     }
   }
 
