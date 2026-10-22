@@ -5,7 +5,7 @@ public class OrcaMobileWebShellModule: Module {
     Name("OrcaMobileWebShell")
 
     View(OrcaMobileWebShellView.self) {
-      Events("onLoadState", "onBridgeMessage", "onExternalNavigation")
+      Events("onLoadState", "onBridgeMessage", "onExternalNavigation", "onPagePathname")
 
       Prop("generationDirectory") { (view: OrcaMobileWebShellView, value: String) in
         view.setGenerationDirectory(value)
@@ -22,6 +22,10 @@ public class OrcaMobileWebShellModule: Module {
       AsyncFunction("postBridgeMessage") {
         (view: OrcaMobileWebShellView, json: String, promise: Promise) in
         try view.postBridgeMessage(json, promise: promise)
+      }
+
+      AsyncFunction("measureActiveTab") { (view: OrcaMobileWebShellView, promise: Promise) in
+        view.measureActiveTab(promise)
       }
 
       OnViewDidUpdateProps { (view: OrcaMobileWebShellView) in

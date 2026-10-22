@@ -32,6 +32,7 @@ export type OrcaMobileWebShellViewProps = ViewProps & {
    * (`MobileWebShellBridge.maxMessageByteCount`); a refusal is silent and reaches no event.
    */
   onBridgeMessage?: (event: NativeSyntheticEvent<MobileWebShellBridgeMessagePayload>) => void
+  onPagePathname?: (event: NativeSyntheticEvent<{ pathname: string }>) => void
   /**
    * A main-frame navigation a human started was cancelled, which is the user aiming the top frame
    * somewhere else: a tap on a link inside the sealed HTML-preview frame, which the browser hands up
@@ -56,6 +57,7 @@ export type OrcaMobileWebShellViewProps = ViewProps & {
 
 /** What a ref on the view carries. Expo puts the view's functions on the component prototype. */
 export type OrcaMobileWebShellViewHandle = {
+  measureActiveTab: () => Promise<{ x: number; y: number; width: number; height: number } | null>
   /**
    * Delivers one raw JSON envelope to the page. Rejects when the message is over the cap, and when
    * there is nowhere to post: no page has spoken since the last load, a navigation is in flight,
@@ -74,7 +76,7 @@ export type OrcaMobileWebShellViewHandle = {
 /**
  * Renders one generation directory in a WebView served from a private origin. There is no reload:
  * a retry is a remount under a new React key, which rebuilds the WebView and reinstalls every
- * fence. The only imperative call is `postBridgeMessage`, and it can say nothing about the load.
+ * fence. `postBridgeMessage` delivers protocol frames; `measureActiveTab` only reads tab geometry.
  */
 export const OrcaMobileWebShellView: ComponentType<
   OrcaMobileWebShellViewProps & RefAttributes<OrcaMobileWebShellViewHandle>

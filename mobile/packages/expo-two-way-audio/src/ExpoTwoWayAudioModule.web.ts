@@ -20,6 +20,8 @@ type ExpoTwoWayAudioWebModule = {
   stopPlayback: () => void
   pausePlayback: () => void
   resumePlayback: () => void
+  enqueueSpeech: (text: string) => void
+  stopSpeech: () => void
   addListener: (eventName: string, handler: (ev: unknown) => void) => EventSubscription
 }
 
@@ -52,6 +54,8 @@ const ExpoTwoWayAudioModule: ExpoTwoWayAudioWebModule = {
   stopPlayback: noop,
   pausePlayback: noop,
   resumePlayback: noop,
+  enqueueSpeech: noop,
+  stopSpeech: noop,
   addListener: () => ({ remove: noop })
 }
 

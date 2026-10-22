@@ -9,8 +9,17 @@ let ON_AUDIO_INTERRUPTION_EVENT_NAME = "onAudioInterruption"
 
 public class ExpoTwoWayAudioModule: Module {
     private var audioEngine: AudioEngine?
+    private let voiceOutput = OrcaVoiceOutput()
     public func definition() -> ModuleDefinition {
         Name("ExpoTwoWayAudio")
+
+        Function("enqueueSpeech") { (text: String) in
+            self.voiceOutput.enqueue(text)
+        }
+
+        Function("stopSpeech") {
+            self.voiceOutput.stop()
+        }
 
         OnCreate {
             let permissionsManager = self.appContext?.permissions

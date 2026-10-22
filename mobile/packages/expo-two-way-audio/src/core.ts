@@ -1,6 +1,14 @@
 import type { PermissionResponse } from 'expo-modules-core'
 import ExpoTwoWayAudioModule from './ExpoTwoWayAudioModule'
 
+export function enqueueSpeech(text: string): void {
+  ExpoTwoWayAudioModule.enqueueSpeech(text)
+}
+
+export function stopSpeech(): void {
+  ExpoTwoWayAudioModule.stopSpeech()
+}
+
 export async function initialize() {
   return await ExpoTwoWayAudioModule.initialize()
 }
